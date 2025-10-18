@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "484648086579",
+    "project_id": "soundscout-10",
+    "storage_bucket": "soundscout-10.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:484648086579:android:4c07315e2d45cd55878746",
+        "android_client_info": {
+          "package_name": "com.nikolaM.soundscout"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA58YZcNwsDUiJnI5hRn1RrRA3Q3peVaOs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
