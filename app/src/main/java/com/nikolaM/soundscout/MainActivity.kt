@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.nikolaM.soundscout.data.repository.AuthRepository
 import com.nikolaM.soundscout.services.LocationService
 import com.nikolaM.soundscout.ui.navigation.LoggedInNavGraph
@@ -18,6 +19,7 @@ import com.nikolaM.soundscout.ui.theme.SoundScoutTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installSplashScreen()
         setContent {
             // Uključujemo temu koju smo definisali za celu aplikaciju
             SoundScoutTheme {

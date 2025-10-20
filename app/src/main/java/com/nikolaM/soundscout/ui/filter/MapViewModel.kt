@@ -1,5 +1,6 @@
 package com.nikolaM.soundscout.ui.filter
 
+import android.location.Location
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,13 +19,15 @@ enum class DateFilterType {
     INTERACTION
 }
 data class ReportFilters(
-    val authorId: String? = null, // Autor je i dalje samo jedan
-    val noiseTypes: List<NoiseType> = emptyList(), // <<-- IZMENA
-    val noiseLevel: NoiseLevel? = null, // <<-- IZMENA
+    val authorId: String? = null,
+    val noiseTypes: List<NoiseType> = emptyList(),
+    val noiseLevel: NoiseLevel? = null,
     val startDate: java.util.Date? = null,
     val endDate: java.util.Date? = null,
 
-    val dateFilterType: DateFilterType = DateFilterType.CREATION
+    val dateFilterType: DateFilterType = DateFilterType.CREATION,
+
+    val radiusMeters: Int? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -34,6 +37,11 @@ class MapViewModel : ViewModel() {
     private val _filters = MutableStateFlow(ReportFilters())
     val filters = _filters.asStateFlow()
 
+    private val _location = MutableStateFlow<Location?>(null)
+
+    fun updateUserLocation(location: Location) {
+        _location.value = location
+    }
 
     val noiseReports: StateFlow<List<NoiseReport>> = _filters.flatMapLatest { currentFilters ->
         // Svaki put kad se filteri promene, ova funkcija će se ponovo pozvati
@@ -45,6 +53,10 @@ class MapViewModel : ViewModel() {
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    fun setRadiusFilter(radius: Int?) {
+        _filters.update { it.copy(radiusMeters = radius) }
+    }
 
     fun setNoiseLevelFilter(noiseLevel: NoiseLevel?) {
         _filters.update { it.copy(noiseLevel = noiseLevel) }
@@ -67,6 +79,10 @@ class MapViewModel : ViewModel() {
         _filters.update { it.copy(endDate = date) }
     }
 
+    fun applyFilters(newFilters: ReportFilters) {
+        _filters.value = newFilters
+    }
+
     fun clearFilters() {
         _filters.value = ReportFilters()
     }
@@ -82,6 +98,57 @@ class MapViewModel : ViewModel() {
             currentFilters.copy(noiseTypes = currentTypes)
         }
     }
+
+//    @OptIn(ExperimentalCoroutinesApi::class)
+//    val finalVisibleReports: StateFlow<List<NoiseReport>> = combine(
+//        noiseReports, // 1. Lista sa servera (filtrirana po atributima)
+//        filters,      // 2. Naši filteri iz UI-ja
+//        _location     // 3. Trenutna lokacija korisnika
+//    ) { reports, currentFilters, myLocation ->
+//
+//        // Ako filter za radijus NIJE uključen, samo vrati listu sa servera
+//        if (currentFilters.radiusMeters == null || myLocation == null) {
+//            reports
+//        } else {
+//            // Ako JESTE uključen, uradi dodatno filtriranje po radijusu
+//            val radius = currentFilters.radiusMeters
+//            reports.filter { report ->
+//                val reportLocation = Location("").apply {
+//                    latitude = report.location.latitude
+//                    longitude = report.location.longitude
+//                }
+//                myLocation.distanceTo(reportLocation) < radius
+//            }
+//        }
+//    }.stateIn(
+//        scope = viewModelScope,
+//        started = SharingStarted.WhileSubscribed(5000),
+//        initialValue = emptyList()
+//    )
+//}
+
+    val finalVisibleReports: StateFlow<List<NoiseReport>> = combine(
+        noiseReports,
+        filters,
+        _location
+    ) { reports, currentFilters, myLocation ->
+        if (currentFilters.radiusMeters != null && myLocation != null) {
+            val radius = currentFilters.radiusMeters
+            reports.filter { report ->
+                val reportLocation = Location("").apply {
+                    latitude = report.location.latitude
+                    longitude = report.location.longitude
+                }
+                myLocation.distanceTo(reportLocation) < radius
+            }
+        } else {
+            reports
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 }
 
 // Mala pomoćna funkcija za konverziju
@@ -100,5 +167,7 @@ fun Query.snapshotFlow(): Flow<List<NoiseReport>> = callbackFlow {
         }
     }
     awaitClose { listener.remove() }
+
+
 }
 

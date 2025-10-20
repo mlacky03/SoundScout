@@ -20,7 +20,7 @@ import java.util.*
 @Composable
 fun ReportListScreen(navController: NavController, vm: MapViewModel) {
     // Koristimo ISTI ViewModel i uzimamo ISTU listu izveštaja
-    val noiseReports by vm.noiseReports.collectAsState()
+    val noiseReports by vm.finalVisibleReports.collectAsState()
     val filters by vm.filters.collectAsState()
 
     Scaffold(

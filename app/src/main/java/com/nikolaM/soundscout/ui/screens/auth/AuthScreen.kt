@@ -10,6 +10,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.nikolaM.soundscout.R
 import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.Color
+
 @Composable
 fun AuthScreen(
     vm: AuthViewModel,
@@ -31,7 +33,7 @@ fun AuthScreen(
             contentDescription = "SoundScout Logo"
         )
         Spacer(Modifier.height(24.dp))
-        Text("Welcome to SoundScout :D ", style = MaterialTheme.typography.headlineLarge) // Privremeno
+        Text("Welcome to SoundScout", style = MaterialTheme.typography.headlineLarge, color=Color.Blue);
 
         Spacer(Modifier.height(24.dp))
 

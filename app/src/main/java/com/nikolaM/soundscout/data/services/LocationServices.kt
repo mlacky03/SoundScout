@@ -1,11 +1,13 @@
 package com.nikolaM.soundscout.services
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import com.google.firebase.firestore.toObjects
 import com.nikolaM.soundscout.data.model.NoiseReport
 import com.nikolaM.soundscout.data.model.UserProfile
@@ -172,6 +175,12 @@ class LocationService : Service() {
     // Funkcija koja pravi i prikazuje notifikaciju
     @SuppressLint("MissingPermission")
     private fun showNearbyUserNotification(user: UserProfile) {
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            // Ako nemamo dozvolu za notifikacije, ne radi ništa.
+            return
+        }
+
         createNotificationChannel() // Kreiramo kanal i za ovu notifikaciju
         val notification = NotificationCompat.Builder(this, "location_channel")
             .setContentTitle("Korisnik u blizini!")
@@ -214,6 +223,11 @@ class LocationService : Service() {
 
     @SuppressLint("MissingPermission")
     private fun showNearbyReportNotification(report: NoiseReport) {
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            // Ako nemamo dozvolu za notifikacije, ne radi ništa.
+            return
+        }
         createNotificationChannel()
         val notification = NotificationCompat.Builder(this, "location_channel")
             .setContentTitle("Nova prijava buke u blizini!")
