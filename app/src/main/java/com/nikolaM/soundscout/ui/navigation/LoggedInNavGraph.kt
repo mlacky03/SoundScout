@@ -6,9 +6,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.nikolaM.soundscout.ui.filter.MapViewModel
-import com.nikolaM.soundscout.ui.home.ReportListScreen
+import com.nikolaM.soundscout.ui.screens.home.ReportListScreen
 import com.nikolaM.soundscout.ui.screens.home.LoggedInHome
-import com.nikolaM.soundscout.ui.ranking.RankingScreen
+import com.nikolaM.soundscout.ui.screens.home.RankingScreen
 
 object Routes {
     const val HOME = "home"

@@ -5,8 +5,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.ktx.Firebase
-import com.google.firebase.firestore.ktx.firestore
 import com.nikolaM.soundscout.BuildConfig
 import com.nikolaM.soundscout.data.repository.AuthRepository
 import com.nikolaM.soundscout.data.remote.CloudinaryService
@@ -22,12 +20,14 @@ data class AuthUiState(
 
 class AuthViewModel : ViewModel() {
     private val _ui = MutableStateFlow(AuthUiState())
+
     val ui = _ui.asStateFlow()
 
     fun signIn(username: String, password: String) = viewModelScope.launch {
         _ui.value = _ui.value.copy(isLoading = true, error = null)
         runCatching { AuthRepository.signIn(username, password) }
-            .onSuccess { _ui.value = _ui.value.copy(isLoading = false, isLoggedIn = true) }
+            .onSuccess { AuthRepository.currentUid()?.let { uid -> AuthRepository.setUserOnlineStatus(uid, true) }
+                        _ui.value = _ui.value.copy(isLoading = false, isLoggedIn = true) }
             .onFailure { _ui.value = _ui.value.copy(isLoading = false, error = it.message) }
     }
 
@@ -43,7 +43,7 @@ class AuthViewModel : ViewModel() {
     ) = viewModelScope.launch {
         _ui.value = _ui.value.copy(isLoading = true, error = null)
         runCatching {
-            // 1) Upload fotografije ako postoji (gallery ili kamera)
+
             val photoUrl = when {
                 galleryUri != null -> {
                     val (url, _) = CloudinaryService.uploadImageUnsigned(
@@ -68,14 +68,12 @@ class AuthViewModel : ViewModel() {
                 }
                 else -> null
             }
-            // 2) Kreiraj nalog + profil
-            //AuthRepository.signUp(username, password, name,surname, phone, photoUrl)
 
             val cred = AuthRepository.preSignUp(username, password)
             val uid = cred.user?.uid
                 ?: throw IllegalStateException("Kreiranje naloga nije uspelo, UID je null.")
 
-            // 2) Zatim, sa dobijenim UID-jem, snimi profil u Firestore
+
             AuthRepository.createProfile(uid, username, name, surname, phone, photoUrl)
         }
             .onSuccess { _ui.value = _ui.value.copy(isLoading = false, isLoggedIn = true) }

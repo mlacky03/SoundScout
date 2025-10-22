@@ -14,11 +14,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.*
@@ -35,7 +39,6 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
-import com.nikolaM.soundscout.services.LocationService
 import com.nikolaM.soundscout.data.model.NoiseReport
 import com.nikolaM.soundscout.data.repository.NoiseRepository
 import com.nikolaM.soundscout.data.model.NoiseLevel
@@ -44,11 +47,13 @@ import com.nikolaM.soundscout.data.model.UserProfile
 import kotlinx.coroutines.launch
 import com.nikolaM.soundscout.data.repository.AuthRepository
 import com.nikolaM.soundscout.ui.navigation.Routes
-import com.nikolaM.soundscout.ui.util.bitmapDescriptorFromVector
+import com.nikolaM.soundscout.util.bitmapDescriptorFromVector
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.res.painterResource
+import com.nikolaM.soundscout.data.services.LocationService
 import com.nikolaM.soundscout.ui.filter.FilterSheet
 import com.nikolaM.soundscout.ui.filter.MapViewModel
 
@@ -59,14 +64,17 @@ enum class LegendState {
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun LoggedInHome(navController: NavController, onLogout: () -> Unit, vm: MapViewModel) { // <-- 1. DODAJEMO onLogout KAO PARAMETAR
-
-
+fun LoggedInHome(navController: NavController, onLogout: () -> Unit, vm: MapViewModel) {
     val currentFilters by vm.filters.collectAsState()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showFilterSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    var isSearchActive by remember { mutableStateOf(false) }
+    val searchQuery by vm.searchQuery.collectAsState()
+    val searchSuggestions by vm.searchSuggestions.collectAsState()
+
 
     val permissionsList = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         listOf(
@@ -90,33 +98,57 @@ fun LoggedInHome(navController: NavController, onLogout: () -> Unit, vm: MapView
     }
 
 
-    val snackbarHostState = remember { SnackbarHostState() }
+
     LaunchedEffect(Unit) {
         permissionState.launchMultiplePermissionRequest()
     }
 
-    // 2. KORISTIMO Scaffold DA LAKO DODAMO GORNJU TRAKU
+
     Scaffold(
         topBar = {
-            // 3. TopAppBar SA NASLOVOM I DUGMETOM ZA ODJAVU
             TopAppBar(
-                title = { Text("SoundScout Mapa") },
+                title = {
+                    if (isSearchActive) {
+                        NoiseTypeSearchBar(
+                            query = searchQuery,
+                            suggestions = searchSuggestions,
+                            onQueryChanged = { vm.onSearchQueryChanged(it) },
+                            onSuggestionClicked = { noiseType ->
+                                vm.toggleNoiseTypeFilter(noiseType)
+                                isSearchActive = false
+                                vm.onSearchQueryChanged("")
+                            },
+                            onClose = { isSearchActive = false }
+                        )
+                    } else
+                    {
+                    Text("SS Mapa")} },
                 actions = {
-                    IconButton(onClick = { navController.navigate(Routes.REPORT_LIST) }) {
-                        Icon(Icons.Default.List, contentDescription = "Prikaži listu")
-                    }
+                    if (!isSearchActive)
+                    {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, contentDescription = "Pretraga")
+                        }
 
-                    IconButton(onClick = { navController.navigate(Routes.RANKING) }) {
-                        Icon(Icons.Default.Leaderboard, contentDescription = "Rang lista")
-                    }
+                        IconButton(onClick = { vm.clearFilters() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Resetuj filtere")
+                        }
+                        IconButton(onClick = { navController.navigate(Routes.REPORT_LIST) }) {
+                                Icon(Icons.Default.List, contentDescription = "Prikaži listu")
+                        }
 
-                    IconButton(onClick = { showFilterSheet = true }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Filteri")
-                    }
+                        IconButton(onClick = { navController.navigate(Routes.RANKING) }) {
+                                Icon(Icons.Default.Leaderboard, contentDescription = "Rang lista")
+                        }
 
-                    TextButton(onClick = onLogout) { // Pozivamo onLogout funkciju
-                        Text("Odjava")
+                        IconButton(onClick = { showFilterSheet = true }) {
+                                Icon(Icons.Default.FilterList, contentDescription = "Filteri")
+                        }
 
+                        TextButton(onClick = onLogout) {
+                                Text("Odjava")
+
+                        }
                     }
                 }
 
@@ -126,21 +158,12 @@ fun LoggedInHome(navController: NavController, onLogout: () -> Unit, vm: MapView
 
             Box(modifier = Modifier.padding(paddingValues)) {
 
-                // Uvek prikazujemo mapu...
-
-                Text(
-                    text = "DEBUG: locationPermissionsGranted = $locationPermissionsGranted",
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
-
                 NoiseMap(
                     vm = vm,
-                    // ...ali joj prosleđujemo informaciju da li imamo dozvolu
                     locationPermissionGranted = locationPermissionsGranted
                 )
 
 
-                // Ako dozvole NISU date, prikaži dugme za ponovno traženje PREKO mape
                 if (!locationPermissionsGranted ) {
                     Button(
                         onClick = {permissionState.launchMultiplePermissionRequest()},
@@ -155,40 +178,18 @@ fun LoggedInHome(navController: NavController, onLogout: () -> Unit, vm: MapView
             }
 
     }
-//    if (showFilterSheet) {
-//        ModalBottomSheet(
-//            onDismissRequest = { showFilterSheet = false },
-//            sheetState = sheetState
-//        ) {
-//            FilterSheet(
-//                vm = vm,
-//                onApplyFilters = {
-//                    // <<-- ISPRAVLJENA LINIJA -->>
-//                    coroutineScope.launch {
-//                        sheetState.hide()
-//                        if (!sheetState.isVisible) {
-//                            showFilterSheet = false
-//                        }
-//                    }
-//                }
-//            )
-//        }
-//    }
 
     if (showFilterSheet) {
         ModalBottomSheet(
             onDismissRequest = { showFilterSheet = false },
             sheetState = sheetState
         ) {
-            // Prosleđujemo početno stanje i definišemo šta se dešava na 'Apply'
             FilterSheet(
                 initialFilters = currentFilters,
                 onDismiss = { showFilterSheet = false },
                 onApply = { newFilters ->
-                    // Tek sada zovemo ViewModel da primeni filtere
                     vm.applyFilters(newFilters)
 
-                    // I zatvaramo prozor
                     coroutineScope.launch {
                         sheetState.hide()
                         if (!sheetState.isVisible) {
@@ -207,8 +208,6 @@ fun LoggedInHome(navController: NavController, onLogout: () -> Unit, vm: MapView
 @Composable
 fun NoiseMap(vm: MapViewModel, locationPermissionGranted: Boolean) {
 
-    val noiseReports by vm.noiseReports.collectAsState()
-    val filters by vm.filters.collectAsState()
 
     val location by if (locationPermissionGranted) {
         LocationService.locationFlow.collectAsState()
@@ -216,21 +215,19 @@ fun NoiseMap(vm: MapViewModel, locationPermissionGranted: Boolean) {
         remember { mutableStateOf(null) }
     }
 
-    //val location by LocationService.locationFlow.collectAsState()
-    //var noiseReports by remember { mutableStateOf<List<NoiseReport>>(emptyList()) }
     var otherUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     var showAddNoiseDialog by remember { mutableStateOf(false) }
 
     val finalReportsToShow by vm.finalVisibleReports.collectAsState()
+
     var selectedReport by remember { mutableStateOf<NoiseReport?>(null) }
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
 
 
     if (locationPermissionGranted) {
-        val context = LocalContext.current // Potreban nam je context
-        // Pokreni servis samo ako imamo dozvolu
+        val context = LocalContext.current
         LaunchedEffect(Unit) {
             val intent = Intent(context, LocationService::class.java).apply {
                 action = LocationService.ACTION_START
@@ -272,27 +269,6 @@ fun NoiseMap(vm: MapViewModel, locationPermissionGranted: Boolean) {
         }
     }
 
-//    val finalReportsToShow = remember(noiseReports, filters.radiusMeters, location) {
-//        val reports = noiseReports // Uzimamo listu iz ViewModela
-//        val radius = filters.radiusMeters
-//
-//        // Ako je filter za radijus uključen (nije null)...
-//        if (radius != null) {
-//            val myLocation = location ?: return@remember emptyList()
-//
-//            // ...filtriraj listu po radijusu
-//            reports.filter { report ->
-//                val reportLocation = android.location.Location("").apply {
-//                    latitude = report.location.latitude
-//                    longitude = report.location.longitude
-//                }
-//                myLocation.distanceTo(reportLocation) < radius
-//            }
-//        } else {
-//            // Ako filter NIJE uključen, prikaži sve
-//            reports
-//        }
-//    }
 
 
     if (showAddNoiseDialog) {
@@ -313,7 +289,7 @@ fun NoiseMap(vm: MapViewModel, locationPermissionGranted: Boolean) {
                             noiseType = noiseType
                         )
                         NoiseRepository.addNoiseReport(newReport)
-                        AuthRepository.incrementUserPoints(currentUserId, 5) // +5 poena za dodavanje
+                        AuthRepository.incrementUserPoints(currentUserId, 5)
                     }
                 }
             }
@@ -323,7 +299,7 @@ fun NoiseMap(vm: MapViewModel, locationPermissionGranted: Boolean) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         val cameraPositionState = rememberCameraPositionState {
-            position = CameraPosition.fromLatLngZoom(LatLng(43.32, 21.89), 12f) // Niš
+            position = CameraPosition.fromLatLngZoom(LatLng(43.32, 21.89), 12f) // lokacija za nis kad nema dozvola za lokaciju
         }
 
         if (locationPermissionGranted) {
@@ -336,7 +312,7 @@ fun NoiseMap(vm: MapViewModel, locationPermissionGranted: Boolean) {
                     ) {
                         cameraPositionState.animate(
                             CameraUpdateFactory.newLatLng(userLocation),
-                            1000
+                            1500
                         )
                     }
                 }
@@ -374,7 +350,7 @@ fun NoiseMap(vm: MapViewModel, locationPermissionGranted: Boolean) {
                     NoiseLevel.VRLO_VISOKA_BUKA -> Color.Red
                     NoiseLevel.EKSTRENMA_BUKA -> Color(0xFF800080)
                 }
-                val icon = bitmapDescriptorFromVector(vectorResId = iconResId, tintColor = iconColor);
+                val icon = bitmapDescriptorFromVector(vectorResId = iconResId, tintColor = iconColor)
 
                 Marker(
                     state = MarkerState(position = LatLng(report.location.latitude, report.location.longitude)),
@@ -421,12 +397,11 @@ fun NoiseMap(vm: MapViewModel, locationPermissionGranted: Boolean) {
 
         MapLegend(
             modifier = Modifier
-                .align(Alignment.TopStart) // Postavlja je u gornji levi ugao
+                .align(Alignment.TopStart)
                 .padding(16.dp)
 
         )
 
-        // Prikaz Bottom Sheet-a sa detaljima ako je 'showBottomSheet' true
         if (showBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showBottomSheet = false },
@@ -436,22 +411,18 @@ fun NoiseMap(vm: MapViewModel, locationPermissionGranted: Boolean) {
                     NoiseReportDetailsSheet(
                         report = report,
                         onVote = { isLike ->
-                            // Pokrećemo korutinu za sve operacije
                             coroutineScope.launch {
 
-                                // 1. Prvo pošaljemo glas u bazu i sačekamo da se završi
                                 AuthRepository.currentUid()?.let { voterId ->
                                     NoiseRepository.voteOnReport(report.id, report.userId, voterId, isLike)
                                 }
 
-                                // 2. Nakon toga, kažemo sheet-u da se sakrije i sačekamo da se animacija završi
                                 sheetState.hide()
 
-                                // 3. Kada se animacija završi, ažuriramo i naše 'showBottomSheet' stanje na 'false'
-                                //    Ovaj 'if' je dodatna provera da budemo sigurni
                                 if (!sheetState.isVisible) {
                                     showBottomSheet = false
                                 }
+
                             }
                         }
                     )
@@ -474,9 +445,9 @@ fun AddNoiseReportDialog(
         onDismissRequest = onDismiss,
         title = { Text("Prijava Nivoa Buke") },
         text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) { // Dodato skrolovanje za manje ekrane
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text("Izaberi subjektivni nivo buke:")
-                NoiseLevel.values().forEach { level ->
+                NoiseLevel.entries.forEach { level ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -489,7 +460,7 @@ fun AddNoiseReportDialog(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Izaberi tip buke:")
-                NoiseType.values().forEach { type ->
+                NoiseType.entries.forEach { type ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -532,13 +503,12 @@ fun NoiseReportDetailsSheet(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // DUGME ZA LIKE
+
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { onVote(true) }, enabled = !alreadyVoted) {
                     Icon(
                         imageVector = Icons.Default.ThumbUp,
                         contentDescription = "Like",
-                        // ===== KLJUČNA IZMENA: Dinamičko bojenje =====
                         tint = if (userLikedThis)
                             Color.Blue
                         else
@@ -551,13 +521,11 @@ fun NoiseReportDetailsSheet(
                 Text("${report.likes}")
             }
 
-            // DUGME ZA DISLIKE
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { onVote(false) }, enabled = !alreadyVoted) {
                     Icon(
                         imageVector = Icons.Default.ThumbDown,
                         contentDescription = "Dislike",
-                        // ===== KLJUČNA IZMENA: Dinamičko bojenje =====
                         tint = if (userDislikedThis)
                             Color.Red
                         else
@@ -567,7 +535,7 @@ fun NoiseReportDetailsSheet(
                 Text("${report.dislikes}")
             }
         }
-        Spacer(modifier = Modifier.height(16.dp)) // Dodat razmak na dnu
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -576,15 +544,13 @@ fun NoiseReportDetailsSheet(
 fun MapLegend(
     modifier: Modifier = Modifier
 ) {
-    // Stanje koje prati da li je legenda proširena (expanded) ili ne
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
-        modifier = modifier.animateContentSize(), // Dodaje animaciju promene veličine
+        modifier = modifier.animateContentSize(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            // Deo koji je uvek vidljiv - samo ikonica za otvaranje/zatvaranje
             IconButton(
                 onClick = { isExpanded = !isExpanded }, // Klikom se menja stanje
                 modifier = Modifier
@@ -594,7 +560,6 @@ fun MapLegend(
                 Icon(Icons.Default.Info, contentDescription = "Prikaži/Sakrij legendu")
             }
 
-            // Deo koji se prikazuje samo ako je legenda proširena
             AnimatedVisibility(visible = isExpanded) {
                 var tabState by remember { mutableStateOf(LegendState.BOJE) }
                 //Column(modifier = Modifier.width(220.dp).padding(horizontal = 8.dp, vertical = 4.dp))
@@ -603,15 +568,14 @@ fun MapLegend(
                         Tab(
                             selected = tabState == LegendState.BOJE,
                             onClick = { tabState = LegendState.BOJE },
-                            text = { Text("Boje") }
+                            text = { Text("B") }
                         )
                         Tab(
                             selected = tabState == LegendState.OZNAKE,
                             onClick = { tabState = LegendState.OZNAKE },
-                            text = { Text("Oznake") }
+                            text = { Text("O") }
                         )
                     }
-                    // Prikazujemo sadržaj u zavisnosti od izabranog taba
                     when (tabState) {
                         LegendState.BOJE -> ColorLegendContent()
                         LegendState.OZNAKE -> IconLegendContent()
@@ -622,49 +586,11 @@ fun MapLegend(
     }
 }
 
-
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun MapLegend(
-//    modifier: Modifier = Modifier,
-//    currentState: LegendState,
-//    onStateChange: (LegendState) -> Unit
-//) {
-//    Card(
-//        modifier = modifier,
-//        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-//    ) {
-//        Column {
-//            // Tabovi za biranje prikaza
-//            TabRow(selectedTabIndex = currentState.ordinal) {
-//                Tab(
-//                    selected = currentState == LegendState.BOJE,
-//                    onClick = { onStateChange(LegendState.BOJE) },
-//                    text = { Text("Boje") }
-//                )
-//                Tab(
-//                    selected = currentState == LegendState.OZNAKE,
-//                    onClick = { onStateChange(LegendState.OZNAKE) },
-//                    text = { Text("Oznake") }
-//                )
-//            }
-//
-//            // Prikazujemo sadržaj u zavisnosti od izabranog taba
-//            when (currentState) {
-//                LegendState.BOJE -> ColorLegendContent()
-//                LegendState.OZNAKE -> IconLegendContent()
-//            }
-//        }
-//    }
-//}
-
-// Sadržaj za prikaz boja
 @Composable
 fun ColorLegendContent() {
     Column(modifier = Modifier.padding(8.dp)) {
         Text("Jačina buke:", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 4.dp))
-        // Prolazimo kroz sve vrednosti NoiseLevel enuma i prikazujemo ih
-        NoiseLevel.values().forEach { level ->
+        NoiseLevel.entries.forEach { level ->
             val color = when (level) {
                 NoiseLevel.TIHO -> Color.Green
                 NoiseLevel.UMERENO -> Color(0xFFADD8E6)
@@ -680,26 +606,25 @@ fun ColorLegendContent() {
     }
 }
 
-// Sadržaj za prikaz oznaka (ikonica)
 @Composable
 fun IconLegendContent() {
     Column(modifier = Modifier.padding(8.dp)) {
         Text("Tipovi oznaka:", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 4.dp))
 
-        // Fiksne oznake
         LegendItem(text = "Moja lokacija") {
-            // Placeholder za standardni crveni pin
             Icon(Icons.Default.LocationOn, contentDescription = "Moja lokacija", tint = Color.Red)
         }
         LegendItem(text = "Drugi korisnik") {
-            // Placeholder za standardni plavi pin
             Icon(Icons.Default.LocationOn, contentDescription = "Drugi korisnik", tint = Color.Blue)
         }
 
-        Divider(modifier = Modifier.padding(vertical = 4.dp))
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 4.dp),
+            thickness = DividerDefaults.Thickness,
+            color = DividerDefaults.color
+        )
 
-        // Prolazimo kroz sve vrednosti NoiseType enuma i prikazujemo ih
-        NoiseType.values().forEach { type ->
+        NoiseType.entries.forEach { type ->
             val iconRes = when (type) {
                 NoiseType.SAOBRACAJ -> R.drawable.ic_traffic
                 NoiseType.GRADNJA -> R.drawable.ic_construction
@@ -715,7 +640,6 @@ fun IconLegendContent() {
     }
 }
 
-// Pomoćna komponenta za jedan red u legendi
 @Composable
 private fun LegendItem(text: String, icon: @Composable () -> Unit) {
     Row(
@@ -725,5 +649,59 @@ private fun LegendItem(text: String, icon: @Composable () -> Unit) {
         icon()
         Spacer(modifier = Modifier.width(8.dp))
         Text(text, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+fun NoiseTypeSearchBar(
+    query: String,
+    suggestions: List<NoiseType>,
+    onQueryChanged: (String) -> Unit,
+    onSuggestionClicked: (NoiseType) -> Unit,
+    onClose: () -> Unit // Funkcija za zatvaranje search bara
+) {
+    var isDropdownExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(suggestions) {
+        // Otvori dropdown ako ima predloga i ako nije prazan query
+        isDropdownExpanded = suggestions.isNotEmpty() && query.isNotEmpty()
+    }
+
+    Box {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChanged,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Pretraži tip buke...") },
+            leadingIcon = {
+                IconButton(onClick = onClose) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zatvori pretragu")
+                }
+            },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChanged("") }) { // Dugme za brisanje teksta
+                        Icon(Icons.Default.Close, contentDescription = "Obriši tekst")
+                    }
+                }
+            },
+            singleLine = true
+        )
+
+        DropdownMenu(
+            expanded = isDropdownExpanded,
+            onDismissRequest = { isDropdownExpanded = false },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            suggestions.forEach { noiseType ->
+                DropdownMenuItem(
+                    text = { Text(noiseType.name) },
+                    onClick = {
+                        onSuggestionClicked(noiseType)
+                        isDropdownExpanded = false
+                    }
+                )
+            }
+        }
     }
 }

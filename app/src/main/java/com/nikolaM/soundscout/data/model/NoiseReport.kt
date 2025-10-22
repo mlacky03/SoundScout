@@ -14,17 +14,17 @@ enum class NoiseType {
 }
 
 data class NoiseReport(
-    // Polja koja se automatski popunjavaju
-    val id: String = "", // ID dokumenta iz Firestore-a
-    val userId: String = "", // ID korisnika koji je kreirao
+
+    val id: String = "",
+    val userId: String = "",
     @ServerTimestamp
-    val timestamp: Date? = null, // Vreme kada je kreirano
+    val timestamp: Date? = null,
     @ServerTimestamp
     val lastInteractionTimestamp: Date? = null,
 
-    // Polja koja korisnik unosi
-    val username: String = "", // Ime korisnika za prikaz
-    val location: GeoPoint = GeoPoint(0.0, 0.0), // Lokacija
+
+    val username: String = "",
+    val location: GeoPoint = GeoPoint(0.0, 0.0),
     val noiseLevel: NoiseLevel = NoiseLevel.TIHO ,
     val noiseType: NoiseType= NoiseType.SAOBRACAJ,
 

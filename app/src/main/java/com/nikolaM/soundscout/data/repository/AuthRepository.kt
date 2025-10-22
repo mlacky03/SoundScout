@@ -16,32 +16,7 @@ object AuthRepository {
     private fun unameToEmail(username: String) =
         "${username.trim().lowercase()}@soundscout.local"
 
-//    suspend fun signUp(
-//        username: String,
-//        password: String,
-//        name: String,
-//        surname: String,
-//        phone: String,
-//        photoUrl: String?
-//    ) {
-//        val email = unameToEmail(username)
-//        val cred = Firebase.auth.createUserWithEmailAndPassword(email, password).await()
-//        val uid = cred.user?.uid ?: error("No UID")
-//
-//        val profile = UserProfile(
-//            uid = uid,
-//            username = username.trim(),
-//            name = name.trim(),
-//            surname = surname.trim(),
-//            phone = phone.trim(),
-//            photoUrl = photoUrl,
-//            isOnline= true
-//        )
-//        Firebase.firestore.collection("users").document(uid).set(profile).await()
-//    }
-
-
-
+    val oneMinuteAgo = Date(System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1))
 
     suspend fun preSignUp(username: String, password: String): com.google.firebase.auth.AuthResult {
         val email = unameToEmail(username)
@@ -96,7 +71,7 @@ object AuthRepository {
         val userDocRef = Firebase.firestore.collection("users").document(uid)
         val updates = mapOf(
             "lastKnownLocation" to GeoPoint(location.latitude, location.longitude),
-            "lastSeen" to FieldValue.serverTimestamp() // Koristimo serversko vreme
+            "lastSeen" to FieldValue.serverTimestamp()
         )
         userDocRef.update(updates).await()
     }
@@ -104,6 +79,7 @@ object AuthRepository {
     fun getActiveUsers(): Query {
         return Firebase.firestore.collection("users")
             .whereEqualTo("isOnline", true)
+            .whereGreaterThan("lastSeen", oneMinuteAgo)
     }
 
     fun setUserOnlineStatus(uid: String, isOnline: Boolean) {

@@ -1,4 +1,4 @@
-package com.nikolaM.soundscout.ui.util
+package com.nikolaM.soundscout.util
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -16,46 +16,22 @@ import androidx.core.graphics.drawable.DrawableCompat
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 
-//@Composable
-//fun bitmapDescriptorFromVector(
-//    @DrawableRes vectorResId: Int,
-//    tintColor: Color,
-//    size: Dp = 48.dp
-//): BitmapDescriptor? {
-//    val context = LocalContext.current
-//    val vectorDrawable = ContextCompat.getDrawable(context, vectorResId) ?: return null
-//    val pxSize = with(LocalDensity.current) { size.toPx().toInt() }
-//
-//    val bitmap = Bitmap.createBitmap(
-//        vectorDrawable.intrinsicWidth,
-//        vectorDrawable.intrinsicHeight,
-//        Bitmap.Config.ARGB_8888
-//    )
-//    val canvas = Canvas(bitmap)
-//
-//    val androidColor = tintColor.hashCode() // Konvertujemo Compose boju u Android boju
-//    DrawableCompat.setTint(vectorDrawable, androidColor)
-//
-//    vectorDrawable.setBounds(0, 0, canvas.width, canvas.height)
-//    vectorDrawable.draw(canvas)
-//
-//    return BitmapDescriptorFactory.fromBitmap(bitmap)
-//}
+
 
 @Composable
 fun bitmapDescriptorFromVector(
     @DrawableRes vectorResId: Int,
     tintColor: Color,
-    size: Dp = 32.dp // <<-- NOVI PARAMETAR: Podrazumevana veličina
+    size: Dp = 32.dp
 ): BitmapDescriptor? {
     val context = LocalContext.current
-    val pxSize = with(LocalDensity.current) { size.toPx().toInt() } // Konvertujemo dp u piksele
+    val pxSize = with(LocalDensity.current) { size.toPx().toInt() }
 
     val vectorDrawable = ContextCompat.getDrawable(context, vectorResId) ?: return null
 
-    vectorDrawable.setBounds(0, 0, pxSize, pxSize) // Postavljamo novu, veću veličinu
+    vectorDrawable.setBounds(0, 0, pxSize, pxSize)
 
-    val androidColor = tintColor.toArgb() // Konvertujemo Compose boju u Android boju
+    val androidColor = tintColor.toArgb()
     DrawableCompat.setTint(vectorDrawable, androidColor)
 
     val bitmap = Bitmap.createBitmap(

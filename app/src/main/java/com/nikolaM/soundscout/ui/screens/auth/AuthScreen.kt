@@ -33,8 +33,7 @@ fun AuthScreen(
             contentDescription = "SoundScout Logo"
         )
         Spacer(Modifier.height(24.dp))
-        Text("Welcome to SoundScout", style = MaterialTheme.typography.headlineLarge, color=Color.Blue);
-
+        Text("Welcome to SoundScout", style = MaterialTheme.typography.headlineLarge, color=Color.Blue)
         Spacer(Modifier.height(24.dp))
 
 

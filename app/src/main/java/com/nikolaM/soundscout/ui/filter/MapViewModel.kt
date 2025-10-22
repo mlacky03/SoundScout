@@ -5,7 +5,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.toObjects
 import com.nikolaM.soundscout.data.model.NoiseLevel
 import com.nikolaM.soundscout.data.model.NoiseReport
 import com.nikolaM.soundscout.data.model.NoiseType
@@ -37,47 +36,45 @@ class MapViewModel : ViewModel() {
     private val _filters = MutableStateFlow(ReportFilters())
     val filters = _filters.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
     private val _location = MutableStateFlow<Location?>(null)
 
     fun updateUserLocation(location: Location) {
         _location.value = location
     }
 
+    val searchSuggestions: StateFlow<List<NoiseType>> = _searchQuery
+        .debounce(300)
+        .map { query ->
+            if (query.isBlank()) {
+                emptyList()
+            } else {
+                NoiseType.entries.filter { noiseType ->
+                    noiseType.name.contains(query, ignoreCase = true)
+                }
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    fun onSearchQueryChanged(query: String) {
+        _searchQuery.value = query
+    }
+
     val noiseReports: StateFlow<List<NoiseReport>> = _filters.flatMapLatest { currentFilters ->
-        // Svaki put kad se filteri promene, ova funkcija će se ponovo pozvati
-        // i napraviće se novi upit ka bazi
+
         NoiseRepository.getFilteredNoiseReports(currentFilters)
-            .snapshotFlow() // Pretvara Firestore listener u Kotlin Flow
+            .snapshotFlow()
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
 
-    fun setRadiusFilter(radius: Int?) {
-        _filters.update { it.copy(radiusMeters = radius) }
-    }
-
-    fun setNoiseLevelFilter(noiseLevel: NoiseLevel?) {
-        _filters.update { it.copy(noiseLevel = noiseLevel) }
-    }
-
-    // Funkcije koje UI poziva da bi promenio filtere
-    fun setAuthorFilter(authorId: String?) {
-        _filters.update { it.copy(authorId = authorId) }
-    }
-
-    fun setStartDate(date: java.util.Date?) {
-        _filters.update { it.copy(startDate = date) }
-    }
-
-    fun setDateFilterType(type: DateFilterType) {
-        _filters.update { it.copy(dateFilterType = type) }
-    }
-
-    fun setEndDate(date: java.util.Date?) {
-        _filters.update { it.copy(endDate = date) }
-    }
 
     fun applyFilters(newFilters: ReportFilters) {
         _filters.value = newFilters
@@ -91,41 +88,13 @@ class MapViewModel : ViewModel() {
         _filters.update { currentFilters ->
             val currentTypes = currentFilters.noiseTypes.toMutableList()
             if (currentTypes.contains(noiseType)) {
-                currentTypes.remove(noiseType) // Ako već postoji, ukloni ga
+                currentTypes.remove(noiseType)
             } else {
-                currentTypes.add(noiseType) // Ako ne postoji, dodaj ga
+                currentTypes.add(noiseType)
             }
             currentFilters.copy(noiseTypes = currentTypes)
         }
     }
-
-//    @OptIn(ExperimentalCoroutinesApi::class)
-//    val finalVisibleReports: StateFlow<List<NoiseReport>> = combine(
-//        noiseReports, // 1. Lista sa servera (filtrirana po atributima)
-//        filters,      // 2. Naši filteri iz UI-ja
-//        _location     // 3. Trenutna lokacija korisnika
-//    ) { reports, currentFilters, myLocation ->
-//
-//        // Ako filter za radijus NIJE uključen, samo vrati listu sa servera
-//        if (currentFilters.radiusMeters == null || myLocation == null) {
-//            reports
-//        } else {
-//            // Ako JESTE uključen, uradi dodatno filtriranje po radijusu
-//            val radius = currentFilters.radiusMeters
-//            reports.filter { report ->
-//                val reportLocation = Location("").apply {
-//                    latitude = report.location.latitude
-//                    longitude = report.location.longitude
-//                }
-//                myLocation.distanceTo(reportLocation) < radius
-//            }
-//        }
-//    }.stateIn(
-//        scope = viewModelScope,
-//        started = SharingStarted.WhileSubscribed(5000),
-//        initialValue = emptyList()
-//    )
-//}
 
     val finalVisibleReports: StateFlow<List<NoiseReport>> = combine(
         noiseReports,
@@ -151,7 +120,6 @@ class MapViewModel : ViewModel() {
     )
 }
 
-// Mala pomoćna funkcija za konverziju
 fun Query.snapshotFlow(): Flow<List<NoiseReport>> = callbackFlow {
     val listener = addSnapshotListener { snapshot, error ->
         if (error != null) {
@@ -167,7 +135,6 @@ fun Query.snapshotFlow(): Flow<List<NoiseReport>> = callbackFlow {
         }
     }
     awaitClose { listener.remove() }
-
 
 }
 

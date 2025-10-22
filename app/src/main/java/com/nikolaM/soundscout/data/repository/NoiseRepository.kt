@@ -13,24 +13,17 @@ object NoiseRepository {
 
     private val noiseReportsCollection = Firebase.firestore.collection("noise_reports")
 
-    // Funkcija za dodavanje novog izveštaja o buci
     suspend fun addNoiseReport(report: NoiseReport) {
         noiseReportsCollection.add(report).await()
     }
 
-    // Funkcija koja će nam u realnom vremenu davati SVE izveštaje iz baze
-    // Koristićemo je da prikažemo markere na mapi
     fun getFilteredNoiseReports(filters: ReportFilters = ReportFilters()): Query {
         var query: Query = noiseReportsCollection
 
-        // Dodajemo filtere jedan po jedan, ako su postavljeni
         if (filters.authorId != null) {
             query = query.whereEqualTo("userId", filters.authorId)
         }
         if (filters.noiseTypes.isNotEmpty()) {
-            // Koristimo 'whereIn' koji proverava da li je vrednost polja
-            // JEDNA OD vrednosti u našoj listi.
-            // Moramo da mapiramo Enum u String, jer su tako sačuvani u bazi.
             query = query.whereIn("noiseType", filters.noiseTypes.map { it.name })
         }
         if (filters.noiseLevel != null) {
@@ -48,11 +41,8 @@ object NoiseRepository {
         if (filters.endDate != null) {
             query = query.whereLessThanOrEqualTo(dateField, filters.endDate)
         }
-            // Na kraju, sortiraj po datumu da najnoviji budu prvi
             return query.orderBy(dateField, Query.Direction.DESCENDING)
         }
-        // Opciono: .orderBy("timestamp", Query.Direction.DESCENDING) // Da budu sortirani
-        // Opciono: .limit(100) // Da ne učitavamo previše podataka
 
         suspend fun voteOnReport(
             reportId: String,
@@ -69,10 +59,7 @@ object NoiseRepository {
                 val report = snapshot.toObject(NoiseReport::class.java) ?: return@runTransaction
 
 
-                // Proveri da li je korisnik već glasao
                 if (report.likedBy.contains(voterId) || report.dislikedBy.contains(voterId)) {
-                    // Korisnik je već glasao, ne radi ništa.
-                    // (Kasnije se može dodati logika za promenu glasa)
                     return@runTransaction
                 }
 
@@ -83,10 +70,9 @@ object NoiseRepository {
                 )
                 val pointsChange = if (isLike) 3L else -3L
 
-                // 1. Ažuriraj poene kreatoru
                 transaction.update(creatorRef, "points", FieldValue.increment(pointsChange))
 
-                // 2. Ažuriraj izveštaj o buci
+
                 if (isLike) {
                     transaction.update(reportRef, "likes", FieldValue.increment(1))
                     transaction.update(reportRef, "likedBy", FieldValue.arrayUnion(voterId))

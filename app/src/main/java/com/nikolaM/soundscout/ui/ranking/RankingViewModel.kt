@@ -24,7 +24,7 @@ class RankingViewModel : ViewModel() {
                 if (snapshot != null) {
                     _users.value = snapshot.toObjects()
                 }
-                // TODO: Handle error
+
             }
         }
     }

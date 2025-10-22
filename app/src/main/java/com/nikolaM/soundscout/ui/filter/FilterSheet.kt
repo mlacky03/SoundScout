@@ -14,231 +14,6 @@ import com.nikolaM.soundscout.data.repository.AuthRepository
 import java.text.SimpleDateFormat
 import java.util.*
 
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun FilterSheet(
-//    vm: MapViewModel,
-//    onApplyFilters: () -> Unit // Funkcija koja će biti pozvana da zatvori prozor
-//) {
-//    val currentFilters by vm.filters.collectAsState()
-//
-//    // Stanja za prikazivanje kalendara
-//    var showStartDatePicker by remember { mutableStateOf(false) }
-//    var showEndDatePicker by remember { mutableStateOf(false) }
-//
-//    // LazyColumn koristimo da bi sadržaj mogao da se skroluje ako ne staje na ekran
-//    LazyColumn(
-//        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-//        verticalArrangement = Arrangement.spacedBy(24.dp)
-//    ) {
-//        item {
-//            Row(
-//                verticalAlignment = Alignment.CenterVertically,
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .clickable {
-//                        // Ako je filter po autoru već uključen, isključujemo ga. U suprotnom, uključujemo.
-//                        if (currentFilters.authorId == AuthRepository.currentUid()) {
-//                            vm.setAuthorFilter(null) // Poništi filter
-//                        } else {
-//                            vm.setAuthorFilter(AuthRepository.currentUid()) // Postavi filter na ID trenutnog korisnika
-//                        }
-//                    }
-//            ) {
-//                // Switch prikazuje da li je filter aktivan
-//                Switch(
-//                    checked = (currentFilters.authorId == AuthRepository.currentUid()),
-//                    onCheckedChange = { isChecked ->
-//                        if (isChecked) {
-//                            vm.setAuthorFilter(AuthRepository.currentUid())
-//                        } else {
-//                            vm.setAuthorFilter(null)
-//                        }
-//                    }
-//                )
-//                Spacer(modifier = Modifier.width(8.dp))
-//                Text("Prikaži samo moje prijave")
-//            }
-//        }
-//
-//        // --- Filter za TIP BUKE (Multi-select sa Checkbox-ovima) ---
-//        item {
-//            Text("Tip Buke (može više opcija)", style = MaterialTheme.typography.titleMedium)
-//            NoiseType.values().forEach { type ->
-//                Row(
-//                    verticalAlignment = Alignment.CenterVertically,
-//                    modifier = Modifier.fillMaxWidth().clickable { vm.toggleNoiseTypeFilter(type) }
-//                ) {
-//                    Checkbox(
-//                        checked = currentFilters.noiseTypes.contains(type),
-//                        onCheckedChange = { vm.toggleNoiseTypeFilter(type) }
-//                    )
-//                    Text(text = type.name)
-//                }
-//            }
-//        }
-//
-//        // --- Filter za JAČINU BUKE (Single-select sa RadioButton-ima) ---
-//        item {
-//            Text("Jačina Buke (samo jedna opcija)", style = MaterialTheme.typography.titleMedium)
-//            NoiseLevel.values().forEach { level ->
-//                Row(
-//                    verticalAlignment = Alignment.CenterVertically,
-//                    modifier = Modifier.fillMaxWidth().clickable {
-//                        // Ako je kliknuti nivo već selektovan, pošalji null da se filter poništi.
-//                        // U suprotnom, pošalji izabrani nivo.
-//                        val newLevel = if (currentFilters.noiseLevel == level) null else level
-//                        vm.setNoiseLevelFilter(newLevel)
-//                    }
-//                ) {
-//                    RadioButton(
-//                        selected = (currentFilters.noiseLevel == level),
-//                        onClick = {
-//                            // Ista logika kao gore
-//                            val newLevel = if (currentFilters.noiseLevel == level) null else level
-//                            vm.setNoiseLevelFilter(newLevel)
-//                        }
-//                    )
-//                    Text(text = level.name)
-//                }
-//            }
-//        }
-//
-//        // --- Filter za DATUM ---
-//        item {
-//            Text("Opseg Datuma", style = MaterialTheme.typography.titleMedium)
-//
-//            // Izbor između datuma kreiranja i interakcije
-//            Row(verticalAlignment = Alignment.CenterVertically) {
-//                RadioButton(
-//                    selected = currentFilters.dateFilterType == DateFilterType.CREATION,
-//                    onClick = { vm.setDateFilterType(DateFilterType.CREATION) }
-//                )
-//                Text("Datum Kreiranja")
-//                Spacer(modifier = Modifier.width(8.dp))
-//                RadioButton(
-//                    selected = currentFilters.dateFilterType == DateFilterType.INTERACTION,
-//                    onClick = { vm.setDateFilterType(DateFilterType.INTERACTION) }
-//                )
-//                Text("Datum Interakcije")
-//            }
-//
-//            // Dugmad za izbor početnog i krajnjeg datuma
-//            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-//                Button(onClick = { showStartDatePicker = true }, modifier = Modifier.weight(1f)) {
-//                    Text(formatDate(currentFilters.startDate) ?: "OD")
-//                }
-//                Button(onClick = { showEndDatePicker = true }, modifier = Modifier.weight(1f)) {
-//                    Text(formatDate(currentFilters.endDate) ?: "DO")
-//                }
-//                TextButton(onClick = {
-//                    vm.setStartDate(null)
-//                    vm.setEndDate(null)
-//                }) {
-//                    Text("Poništi")
-//                }
-//            }
-//        }
-//
-//
-//        item {
-//            Column {
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    verticalAlignment = Alignment.CenterVertically,
-//                    horizontalArrangement = Arrangement.SpaceBetween
-//                ) {
-//                    Text("Radijus pretrage", style = MaterialTheme.typography.titleMedium)
-//                    // Dugme za poništavanje filtera po radijusu
-//                    if (currentFilters.radiusMeters != null) {
-//                        TextButton(onClick = { vm.setRadiusFilter(null) }) {
-//                            Text("Poništi")
-//                        }
-//                    }
-//                }
-//
-//                // Prikazujemo trenutnu vrednost (ili poruku da je isključeno)
-//                Text(
-//                    text = currentFilters.radiusMeters?.let { "${it / 1000f} km" } ?: "Isključeno",
-//                    style = MaterialTheme.typography.bodySmall
-//                )
-//
-//                Slider(
-//                    value = currentFilters.radiusMeters?.toFloat() ?: 0f,
-//                    onValueChange = { vm.setRadiusFilter(it.toInt()) },
-//                    valueRange = 500f..5000f, // Od 500 metara do 5000 metara (5km)
-//                    steps = 8 // (5000-500)/500 - 1 = 8 koraka. Ovo čini da klizač "skače" na svakih 500m.
-//                )
-//            }
-//        }
-//
-//        item {
-//            Row(
-//                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp),
-//                horizontalArrangement = Arrangement.End
-//            ) {
-//                TextButton(onClick = { vm.clearFilters() }) {
-//                    Text("Poništi Filtere")
-//                }
-//                Spacer(modifier = Modifier.width(8.dp))
-//                Button(onClick = onApplyFilters) {
-//                    Text("Primeni")
-//                }
-//            }
-//        }
-//    }
-//
-//    // --- Dijalozi za kalendar (DatePicker) ---
-//    if (showStartDatePicker) {
-//        val datePickerState = rememberDatePickerState(
-//            selectableDates = object : SelectableDates {
-//                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-//                    // Ako je krajnji datum izabran, dozvoli samo datume PRE ili JEDNAKE njemu
-//                    return currentFilters.endDate?.let { endDate ->
-//                        utcTimeMillis <= endDate.time
-//                    } ?: true // Ako nije, dozvoli sve
-//                }
-//            }
-//        )
-//        DatePickerDialog(
-//            onDismissRequest = { showStartDatePicker = false },
-//            confirmButton = {
-//                Button(onClick = {
-//                    datePickerState.selectedDateMillis?.let { vm.setStartDate(Date(it)) }
-//                    showStartDatePicker = false
-//                }) { Text("OK") }
-//            },
-//            dismissButton = { TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") } }
-//        ) {
-//            DatePicker(state = datePickerState)
-//        }
-//    }
-//
-//    if (showEndDatePicker) {
-//        val datePickerState = rememberDatePickerState(
-//            selectableDates = object : SelectableDates {
-//                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-//                    // Ako je početni datum izabran, dozvoli samo datume POSLE ili JEDNAKE njemu
-//                    return currentFilters.startDate?.let { startDate ->
-//                        utcTimeMillis >= startDate.time
-//                    } ?: true // Ako nije, dozvoli sve
-//                }
-//            }
-//        )
-//        DatePickerDialog(
-//            onDismissRequest = { showEndDatePicker = false },
-//            confirmButton = {
-//                Button(onClick = {
-//                    datePickerState.selectedDateMillis?.let { vm.setEndDate(Date(it)) }
-//                    showEndDatePicker = false
-//                }) { Text("OK") }
-//            },
-//            dismissButton = { TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") } }
-//        ) {
-//            DatePicker(state = datePickerState)
-//        }
-//    }
-//}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -250,11 +25,10 @@ fun FilterSheet(
 ) {
     var tempFilters by remember { mutableStateOf(initialFilters) }
 
-    // Stanja za prikazivanje kalendara
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
 
-    // LazyColumn koristimo da bi sadržaj mogao da se skroluje ako ne staje na ekran
+
     LazyColumn(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -265,7 +39,7 @@ fun FilterSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        // <<-- IZMENA: Sada menjamo samo LOKALNO STANJE 'tempFilters' -->>
+
                         val currentUid = AuthRepository.currentUid()
                         val newAuthorId = if (tempFilters.authorId == currentUid) null else currentUid
                         tempFilters = tempFilters.copy(authorId = newAuthorId)
@@ -273,9 +47,9 @@ fun FilterSheet(
             ) {
                 Text("Prikaži samo moje prijave", modifier = Modifier.weight(1f))
                 Switch(
-                    checked = (tempFilters.authorId != null), // Provera je sada jednostavnija
+                    checked = (tempFilters.authorId != null),
                     onCheckedChange = { isChecked ->
-                        // <<-- IZMENA: I ovde menjamo samo 'tempFilters' -->>
+
                         val newAuthorId = if (isChecked) AuthRepository.currentUid() else null
                         tempFilters = tempFilters.copy(authorId = newAuthorId)
                     }
@@ -283,10 +57,10 @@ fun FilterSheet(
             }
         }
 
-        // --- Filter za TIP BUKE (Multi-select sa Checkbox-ovima) ---
+
         item {
             Text("Tip Buke", style = MaterialTheme.typography.titleMedium)
-            NoiseType.values().forEach { type ->
+            NoiseType.entries.forEach { type ->
                 Row(modifier = Modifier.fillMaxWidth().clickable {
                     val currentTypes = tempFilters.noiseTypes.toMutableList()
                     if (currentTypes.contains(type)) currentTypes.remove(type) else currentTypes.add(type)
@@ -305,10 +79,10 @@ fun FilterSheet(
             }
         }
 
-        // --- Filter za JAČINU BUKE (Single-select sa RadioButton-ima) ---
+
         item {
             Text("Jačina Buke", style = MaterialTheme.typography.titleMedium)
-            NoiseLevel.values().forEach { level ->
+            NoiseLevel.entries.forEach { level ->
                 Row(modifier = Modifier.fillMaxWidth().clickable {
                     val newLevel = if (tempFilters.noiseLevel == level) null else level
                     tempFilters = tempFilters.copy(noiseLevel = newLevel)
@@ -325,7 +99,7 @@ fun FilterSheet(
             }
         }
 
-        // --- Filter za DATUM ---
+
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Opseg Datuma", style = MaterialTheme.typography.titleMedium)
@@ -392,7 +166,7 @@ fun FilterSheet(
         }
     }
 
-    // --- Dijalozi za kalendar (DatePicker) ---
+
     if (showStartDatePicker) {
         val datePickerState = rememberDatePickerState(selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
@@ -421,7 +195,23 @@ fun FilterSheet(
             onDismissRequest = { showEndDatePicker = false },
             confirmButton = {
                 Button(onClick = {
-                    datePickerState.selectedDateMillis?.let { tempFilters = tempFilters.copy(endDate = Date(it)) }
+                    //datePickerState.selectedDateMillis?.let { tempFilters = tempFilters.copy(endDate = Date(it)) }
+                    datePickerState.selectedDateMillis?.let { millis ->
+
+
+
+                        val selectedDate = Date(millis)
+
+
+                        val calendar = Calendar.getInstance()
+                        calendar.time = selectedDate
+                        calendar.set(Calendar.HOUR_OF_DAY, 23)
+                        calendar.set(Calendar.MINUTE, 59)
+                        calendar.set(Calendar.SECOND, 59)
+
+
+                        tempFilters = tempFilters.copy(endDate = calendar.time)
+                    }
                     showEndDatePicker = false
                 }) { Text("OK") }
             },
@@ -434,7 +224,6 @@ fun FilterSheet(
 
 private fun formatDate(date: Date?): String? {
     if (date == null) return null
-    // Podesi format kako ti odgovara
     val format = SimpleDateFormat("dd.MM.yyyy.", Locale.getDefault())
     return format.format(date)
 }

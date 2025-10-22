@@ -26,33 +26,33 @@ import coil.compose.AsyncImage
 @Composable
 fun RegistrationScreen(
     vm: AuthViewModel,
-    onNavigateBack: () -> Unit // Funkcija za povratak nazad
+    onNavigateBack: () -> Unit
 ) {
     val ui by vm.ui.collectAsState()
     val context = LocalContext.current
 
-    // Polja
+
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var surname by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
 
-    // Foto
+
     var selectedGallery by remember { mutableStateOf<Uri?>(null) }
     var cameraBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     val galleryPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        cameraBitmap = null // Resetuj drugu opciju
+        cameraBitmap = null
         selectedGallery = uri
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview()
     ) { bmp ->
-        selectedGallery = null // Resetuj drugu opciju
+        selectedGallery = null
         cameraBitmap = bmp
     }
 
@@ -60,10 +60,10 @@ fun RegistrationScreen(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            // Ako je korisnik DAO dozvolu, SADA pokrećemo kameru
+
             cameraLauncher.launch(null)
         } else {
-            // Opciono: Ovde možeš prikazati poruku da je dozvola odbijena
+            // ovde bi islo da je odbijena dozvola
         }
     }
 
@@ -84,7 +84,7 @@ fun RegistrationScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()) // Omogućava skrolovanje
+                .verticalScroll(rememberScrollState())
         ) {
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(username, { username = it }, label = { Text("Korisničko ime") }, modifier = Modifier.fillMaxWidth())
@@ -102,7 +102,6 @@ fun RegistrationScreen(
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                    // <<-- Onemogući dugme ako je slika već izabrana -->>
                     enabled = !imageSelected
                 ) { Text("Izaberi foto") }
 
@@ -115,7 +114,6 @@ fun RegistrationScreen(
                             cameraPermissionLauncher.launch(permission)
                         }
                     },
-                    // <<-- Onemogući dugme ako je slika već izabrana -->>
                     enabled = !imageSelected
                 ) {
                     Text("Snimi kamerom")
@@ -129,20 +127,17 @@ fun RegistrationScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Preview slike
                     AsyncImage(
                         model = selectedGallery ?: cameraBitmap,
                         contentDescription = "Izabrana slika za profil",
                         modifier = Modifier.size(64.dp)
                     )
 
-                    // Poruka o uspehu
                     Text(
                         text = if (selectedGallery != null) "Slika iz galerije izabrana!" else "Fotografija snimljena!",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
-                    // Dugme za uklanjanje slike i ponovni izbor
                     TextButton(onClick = {
                         selectedGallery = null
                         cameraBitmap = null
@@ -160,7 +155,6 @@ fun RegistrationScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
             ) { Text("Registruj se") }
 
-            // Prikaz greške ili učitavanja
             if (ui.isLoading) {
                 LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 16.dp))
             }

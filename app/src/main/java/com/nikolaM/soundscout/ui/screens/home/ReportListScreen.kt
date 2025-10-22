@@ -1,4 +1,4 @@
-package com.nikolaM.soundscout.ui.home
+package com.nikolaM.soundscout.ui.screens.home
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,7 +19,6 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportListScreen(navController: NavController, vm: MapViewModel) {
-    // Koristimo ISTI ViewModel i uzimamo ISTU listu izveštaja
     val noiseReports by vm.finalVisibleReports.collectAsState()
     val filters by vm.filters.collectAsState()
 
@@ -45,10 +44,9 @@ fun ReportListScreen(navController: NavController, vm: MapViewModel) {
 
                 ListItem(
                     headlineContent = { Text("Tip: ${report.noiseType} | Nivo: ${report.noiseLevel} | Prijavio: ${report.username} ") },
-                    //supportingContent = { Text("Prijavio: ${report.username}") },
                     trailingContent = { Text(formatDateForList(dateField)) }
                 )
-                Divider()
+                HorizontalDivider()
             }
         }
     }
